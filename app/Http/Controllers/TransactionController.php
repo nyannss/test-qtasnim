@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Product;
 use App\Models\Transaction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -35,7 +36,16 @@ class TransactionController extends Controller
 
         $acceptSort = ['product_name', 'created_at', 'id', 'qty'];
         if (collect($acceptSort)->contains($sortBy)) {
-            if ($sortBy == 'product_name') $sortBy = 'products.name';
+            switch ($sortBy) {
+                case 'product_name':
+                    $sortBy = 'products.name';
+                    break;
+                case 'id':
+                    $sortBy = 'transactions.id';
+                    break;
+            }
+
+
             $query->orderBy($sortBy, $sortOrder);
         }
 
@@ -63,13 +73,28 @@ class TransactionController extends Controller
         return response()->json($response);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function show($id): JsonResponse
     {
-        //
+        try {
+            $tr = Transaction::with('product.category')->find($id);
+            if (!$tr)
+                throw new \Exception('Transaction data not found', 404);
+
+
+            return response()->json([
+                'code' => 200,
+                'message' => 'Transaction data fetched',
+                'data' => $tr
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'code' => $e->getCode() ?? '500',
+                'message' => $e->getMessage() ?? 'Internal server error',
+                'data' => null
+            ], $e->getCode());
+        }
     }
+
 
     /**
      * Store a newly created resource in storage.
@@ -77,37 +102,146 @@ class TransactionController extends Controller
     public function store(Request $request)
     {
         //
-    }
+        try {
+            $request->validate([
+                'product_id' => 'required|exists:products,id', // Validasi bahwa product_id ada dalam tabel products
+                'qty' => 'required|integer|min:1', // Validasi bahwa qty adalah bilangan bulat positif
+            ]);
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Transaction $transaction)
-    {
-        //
-    }
+            $product = Product::findOrFail($request->input('product_id'));
+            $qty = $request->input('qty');
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Transaction $transaction)
-    {
-        //
+            if ($qty > $product->stock) {
+                throw new \Exception('Quantity exceeds available stock');
+            }
+
+            if ($qty > $product->stock) {
+                throw new \Exception('Quantity exceeds available stock');
+            }
+
+            $tr = new Transaction;
+            $tr->product_id = $product->id;
+            $tr->qty = $qty;
+
+            $product->qty_sold += $qty;
+            $product->stock -= $qty;
+
+            if (!$tr->save())
+                throw new \Exception('An error ocurred when insert to database');
+
+            $product->save();
+
+            return response()->json([
+                'status' => 201,
+                'message' => 'Data inserted',
+                'data' => [$tr]
+            ], 201);
+        } catch (\Throwable $e) {
+            // throw $th;
+            return response()->json([
+                'status' => 400,
+                'message' => $e->getMessage(),
+                'data' => null
+            ], 400);
+        }
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Transaction $transaction)
+    public function update(Request $request, $id)
     {
         //
+        try {
+            $tr = Transaction::with('product')->find($id);
+            if (!$tr)
+                throw new \Exception('Transaction data not found', 404);
+
+            $request->validate([
+                'product_id' => 'nullable|exists:products,id', // validate with reference in products table
+                'qty' => 'nullable|integer|min:1', // validate integer must >= 1
+            ]);
+            $product_id = $request->input('product_id');
+
+            if ($product_id) {
+                $product = Product::findOrFail($product_id);
+
+                if ($product->id == $tr->product->id) {
+                    $product->stock += $tr->qty;
+                    $product->qty_sold -= $tr->qty;
+                } else {
+                    $oldProduct = $tr->product;
+                    $oldProduct->stock +=  $tr->qty;
+                    $oldProduct->qty_sold -= $tr->qty;
+                }
+
+                // update
+                $tr->product_id = $product->id;
+            }
+
+            $qty = $request->input('qty');
+
+            if ($qty) {
+                if ($qty > $product->stock) {
+                    throw new \Exception('Quantity exceeds available stock', 400);
+                }
+
+                if ($qty > $product->stock) {
+                    throw new \Exception('Quantity exceeds available stock', 400);
+                }
+
+                // update
+                $tr->qty = $qty;
+            }
+
+            $tr->save();
+
+            if (isset($oldProduct) && $oldProduct)
+                $oldProduct->save();
+
+            if (isset($product) && $product) {
+                $product->stock     -= $qty;
+                $product->qty_sold  += $qty;
+                $product->save();
+            }
+
+            return response()->json([
+                'code' => 200,
+                'message' => "transaction data updated",
+                'data' => [$tr]
+            ], 200);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'code' => ($th->getCode() == 0 || $th->getCode() > 500 ? 500 : $th->getCode()) ?? 500,
+                'message' => $th->getMessage() ?? "Internal server error",
+                'data' => null
+            ], ($th->getCode() == 0 || $th->getCode() > 500 ? 500 : $th->getCode()) ?? 500);
+        }
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Transaction $transaction)
+    public function destroy($id)
     {
-        //
+        try {
+            $tr = Transaction::find($id);
+            if (!$tr)
+                throw new \Exception('Transaction data not found', 404);
+
+            $tr->delete();
+
+            return response()->json([
+                'code' => 200,
+                'message' => 'Transaction data deleted',
+                'data' => null
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'code' => $e->getCode() ?? '500',
+                'message' => $e->getMessage() ?? 'Internal server error',
+                'data' => null
+            ], $e->getCode());
+        }
     }
 }
