@@ -23,5 +23,11 @@ export const insertNewTransaction = ({ productID, qty }) =>
         qty,
     });
 
+export const updateTransaction = ({ transactionID, productID, qty }) =>
+    api.patch(`/transaction/${transactionID}`, {
+        product_id: productID,
+        qty,
+    });
+
 export const deleteTransaction = (transactionID) =>
     api.delete(`/transaction/${transactionID}`);

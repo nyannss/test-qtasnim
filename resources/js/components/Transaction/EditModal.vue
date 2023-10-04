@@ -8,24 +8,30 @@ import {
 import { useToast } from 'vue-toastification';
 
 import { getAllProducts } from '../../utils/https/product.js';
-import { insertNewTransaction } from '../../utils/https/transaction.js';
+import { updateTransaction } from '../../utils/https/transaction.js';
 
 const toast = useToast();
-const input = ref({
-    product_id: "",
-    qty: 1
-});
 
-const props = defineProps({
-    onSuccess: Function,
-})
+const modal = true;
 
 const products = ref([]);
 
-const modal = ref(false);
+
+
 const status = ref({
     isProductLoading: true,
     isSubmitLoading: false,
+});
+
+const props = defineProps({
+    onClose: Function,
+    onSave: Function,
+    data: Object
+})
+
+const input = ref({
+    product_id: 1,
+    qty: "",
 });
 
 const rules = {
@@ -43,6 +49,29 @@ const rules = {
     ]
 };
 
+const saveAction = async () => {
+    try {
+        status.value.isSubmitLoading = true;
+        await updateTransaction({
+            transactionID: props.data.id,
+            productID: input.value.product_id,
+            qty: input.value.qty
+        });
+        toast.success("Berhasil mengubah data transaksi");
+
+        props.onSave();
+        props.onClose();
+    } catch (error) {
+        if (error.response?.data?.message) {
+            return toast.error(error.response.data.message);
+        }
+        return toast.error("Terjadi kesalahan");
+
+    } finally {
+        status.value.isSubmitLoading = false;
+    }
+}
+
 const fetchProducts = async () => {
     try {
         const result = await getAllProducts({});
@@ -55,40 +84,20 @@ const fetchProducts = async () => {
     }
 }
 
-const submit = async () => {
-    try {
-        status.value.isSubmitLoading = true;
-        await insertNewTransaction({ productID: input.value.product_id, qty: input.value.qty });
-        toast.success("Berhasil menambahkan histori");
-
-        modal.value = false;
-        props.onSuccess();
-    } catch (error) {
-        if (error.response?.data?.message) {
-            return toast.error(error.response.data.message);
-        }
-        return toast.error("Terjadi kesalahan");
-
-    } finally {
-        status.value.isSubmitLoading = false;
-    }
-}
-
+onMounted(() => {
+    input.value.product_id = props.data.product_id;
+    input.value.qty = props.data.qty;
+});
 onMounted(() => fetchProducts());
+
 </script>
 
 <template>
-    <VLayoutItem model-value position="bottom" absolute class="text-end" size="88">
-        <div class="ma-4">
-            <v-btn @click="() => modal = true" icon="mdi-plus" size="large" elevation="8" />
-        </div>
-    </VLayoutItem>
-
     <v-row justify="center">
         <v-dialog v-model="modal" persistent width="1024">
             <v-card>
                 <v-card-title>
-                    <span class="text-h5">Add new transaction history</span>
+                    <span class="text-h5">Edit transaction history</span>
                 </v-card-title>
                 <v-card-text>
                     <v-container>
@@ -117,10 +126,10 @@ onMounted(() => fetchProducts());
                 </v-card-text>
                 <v-card-actions>
                     <v-spacer></v-spacer>
-                    <v-btn color="blue-darken-1" variant="text" @click="modal = false" :disabled="status.isSubmitLoading">
+                    <v-btn color="blue-darken-1" variant="text" @click="onClose" :disabled="status.isSubmitLoading">
                         Close
                     </v-btn>
-                    <v-btn color="blue-darken-1" variant="text" @click="submit" :loading="status.isSubmitLoading">
+                    <v-btn color="blue-darken-1" variant="text" @click="saveAction" :loading="status.isSubmitLoading">
                         Save
                     </v-btn>
                 </v-card-actions>

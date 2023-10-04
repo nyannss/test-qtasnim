@@ -23,7 +23,7 @@ class TransactionController extends Controller
         $sortBy = $request->input('sort_by', 'id');
         $sortOrder = $request->input('sort_order', 'asc');
 
-        $query = Transaction::select('transactions.*', 'products.*', 'categories.name as category_name')
+        $query = Transaction::select('products.*', 'transactions.*', 'products.id as product_id', 'categories.name as category_name')
             ->join('products', 'products.id', '=', 'transactions.product_id')
             ->join('categories', 'products.category_id', '=', 'categories.id');
 
@@ -41,6 +41,9 @@ class TransactionController extends Controller
             switch ($sortBy) {
                 case 'product_name':
                     $sortBy = 'products.name';
+                    break;
+                case 'created_at':
+                    $sortBy = 'transactions.created_at';
                     break;
                 case 'id':
                     $sortBy = 'transactions.id';

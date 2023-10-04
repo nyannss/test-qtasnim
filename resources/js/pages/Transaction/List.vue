@@ -1,9 +1,167 @@
+<script setup>
+import {
+    computed,
+    onMounted,
+    ref,
+    watch,
+} from 'vue';
+
+import { useToast } from 'vue-toastification';
+
+import AddNewModal from '../../components/Transaction/AddNewModal.vue';
+import DeleteModal from '../../components/Transaction/DeleteModal.vue';
+import EditModal from '../../components/Transaction/EditModal.vue';
+import { dateFormatter } from '../../utils/date.js';
+import {
+    deleteTransaction,
+    getAllTransactions,
+} from '../../utils/https/transaction.js';
+
+const toast = useToast();
+const data = ref([]);
+const meta = ref({
+
+});
+
+const status = ref({
+    isDeleteLoading: false,
+    isDataLoading: true
+});
+
+
+const deleteModal = ref({
+    isOpen: false,
+    id: null
+});
+
+const queries = ref({
+    searchByName: "",
+    per_page: 10,
+    page: 1,
+    sort_by: "",
+    sort_order: "desc",
+    sortValue: ""
+})
+
+const editModal = ref({
+    isOpen: false,
+    data: {}
+})
+
+
+
+const fetchData = async () => {
+    try {
+        status.value.isDataLoading = true;
+        const result = await getAllTransactions(queries.value);
+        data.value = result.data.data.data;
+        meta.value = result.data.data;
+        delete meta.value.data;
+    } catch (error) {
+        if (error.response?.data?.message) {
+            return toast.error(error.response.data.message);
+        }
+        return toast.error("Terjadi kesalahan saat mengambil data");
+    } finally {
+        status.value.isDataLoading = false;
+
+    }
+}
+
+const currentPage = computed(() => queries.value.page);
+
+const deleteData = async (id) => {
+    try {
+        status.value.isDeleteLoading = true;
+        const result = await deleteTransaction(deleteModal.value.id);
+        toast.success("Success deleting data");
+        deleteModal.value.isOpen = false;
+        fetchData();
+    } catch (error) {
+        if (error.response?.data?.message) {
+            return toast.error(error.response.data.message);
+        }
+        return toast.error("Terjadi kesalahan saat menghapus data");
+    } finally {
+        status.value.isDeleteLoading = false;
+    }
+}
+
+const sortOptions = [
+    {
+        title: "A-Z",
+        value: "product_name,asc"
+    },
+    {
+        title: "Z-A",
+        value: "product_name,desc"
+    },
+    {
+        title: "Latest",
+        value: "created_at,desc"
+    },
+    {
+        title: "Oldest",
+        value: "created_at,asc"
+    },
+    {
+        title: "Most quantity",
+        value: "qty,desc"
+    },
+    {
+        title: "Least quantity",
+        value: "qty,asc"
+    },
+
+];
+
+const filterAction = () => {
+    if (queries.value.sortValue !== "") {
+        const sort = queries.value.sortValue.split(",");
+        queries.value.sort_by = sort[0];
+        queries.value.sort_order = sort[1];
+    }
+
+    fetchData();
+}
+
+// reactivity
+watch(currentPage, fetchData);
+onMounted(() => fetchData());
+
+
+</script>
+
+
 <template>
     <DeleteModal v-if="deleteModal" :isOpen="deleteModal.isOpen" :onClose="() => deleteModal.isOpen = false"
-        :onAccept="deleteData" />
-    <AddNewModal />
+        :onAccept="deleteData" :isLoading="status.isDeleteLoading" />
+    <AddNewModal :onSuccess="() => fetchData()" />
+    <EditModal :data="editModal.data" :onSave="() => { editModal.isOpen = false; fetchData(); }"
+        :onClose="() => editModal.isOpen = false" v-if="editModal.isOpen" />
 
-    <v-container class="max-width">
+    <v-container class="max-width" v-if="status.isDataLoading">
+        <v-row class="d-flex align-center justify-center" style="height: 100vh;">
+            <v-progress-circular indeterminate color="primary"></v-progress-circular>
+        </v-row>
+    </v-container>
+
+
+    <v-container class="max-width" v-if="!status.isDataLoading">
+
+        <v-row>
+            <v-col cols="6" md="6">
+                <v-text-field v-model="queries.searchByName" label="Cari" outlined />
+            </v-col>
+            <v-col cols="6" md="2">
+                <v-select v-model="queries.sortValue" :items="sortOptions" label="Urutkan berdasarkan" outlined></v-select>
+            </v-col>
+            <v-col>
+                <v-btn h="full" size="large" color="primary" @click="filterAction">Go</v-btn>
+            </v-col>
+        </v-row>
+
+
         <v-table>
             <thead>
                 <tr>
@@ -28,14 +186,15 @@
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="item in data" :key="item.name">
+                <tr v-for="item in data" :key="item.id">
                     <td>{{ item.name }}</td>
                     <td>{{ item.stock }}</td>
                     <td>{{ item.qty }}</td>
                     <td>{{ dateFormatter(item.created_at) }}</td>
                     <td>{{ item.category_name }}</td>
                     <td>
-                        <v-btn variant="text" icon="mdi-pencil-outline"></v-btn>
+                        <v-btn variant="text" @click="() => editModal = { isOpen: true, data: item }"
+                            icon="mdi-pencil-outline"></v-btn>
                         <v-btn variant="text" @click="() => deleteModal = { id: item.id, isOpen: true }"
                             icon="mdi-delete"></v-btn>
                     </td>
@@ -43,68 +202,9 @@
             </tbody>
         </v-table>
 
-        <v-pagination c v-model="queries.page" class="my-4" :length="meta.last_page" @input="next"></v-pagination>
+        <v-pagination :total-visible="5" v-model="queries.page" class="my-4" :length="meta.last_page"
+            @input="fetchData"></v-pagination>
     </v-container>
 </template>
 
-<script setup>
-import {
-    onMounted,
-    ref,
-    watch,
-} from 'vue';
 
-import AddNewModal from '../../components/Transaction/AddNewModal.vue';
-import DeleteModal from '../../components/Transaction/DeleteModal.vue';
-import { dateFormatter } from '../../utils/date.js';
-import {
-    deleteTransaction,
-    getAllTransactions,
-} from '../../utils/https/transaction.js';
-
-const data = ref([]);
-const meta = ref({
-
-});
-
-const deleteModal = ref({
-    isOpen: false,
-    id: null
-});
-
-const queries = ref({
-    searchByName: "",
-    per_page: 3,
-    page: 1
-})
-
-
-
-const fetchData = async () => {
-    try {
-        const result = await getAllTransactions(queries.value);
-        data.value = result.data.data.data;
-        meta.value = result.data.data;
-        delete meta.value.data;
-    } catch (error) {
-        console.error(error);
-    }
-}
-
-const deleteData = async (id) => {
-    try {
-        const result = await deleteTransaction(deleteModal.value.id);
-    } catch (error) {
-        console.error(error);
-    }
-}
-
-const next = (page) => {
-    queries.value.page = page;
-    fetchData();
-}
-
-onMounted(() => fetchData());
-
-
-</script>

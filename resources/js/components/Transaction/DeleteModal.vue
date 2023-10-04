@@ -1,6 +1,6 @@
 <template>
     <div class="text-center">
-        <v-dialog v-model="isOpen" width="auto">
+        <v-dialog :persistent="isLoading" v-model="isOpen" width="auto">
             <v-card>
                 <v-card-text>
                     Are you sure to delete this item?
@@ -8,10 +8,10 @@
 
                 <v-card-actions>
                     <v-spacer></v-spacer>
-                    <v-btn color="blue-darken-1" variant="text" @click="onClose">
+                    <v-btn color="blue-darken-1" variant="text" @click="onClose" :disabled="isLoading">
                         Close
                     </v-btn>
-                    <v-btn color="blue-darken-1" variant="text" @click="onAccept">
+                    <v-btn color="blue-darken-1" variant="text" @click="onAccept" :loading="isLoading">
                         Yes, sure
                     </v-btn>
                 </v-card-actions>
@@ -35,7 +35,8 @@ export default {
     props: {
         onClose: Function,
         onAccept: Function,
-        isOpen: Boolean
+        isOpen: Boolean,
+        isLoading: Boolean
     }
 }
 </script>
