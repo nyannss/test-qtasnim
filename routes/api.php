@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ProductController;
 use App\Http\Controllers\TransactionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -25,4 +26,8 @@ Route::controller(TransactionController::class)->prefix('transaction')->name('tr
     Route::post('/', 'store')->name('store');
     Route::patch('/{id}', 'update')->name('update');
     Route::delete('/{id}', 'destroy')->name('destroy');
+});
+
+Route::controller(ProductController::class)->prefix('product')->name('product.')->group(function () {
+    Route::get('/', 'index')->name('index');
 });

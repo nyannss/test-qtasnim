@@ -1,5 +1,5 @@
 <template>
-    <v-btn>Click here</v-btn>
+    <h1>Welcome!</h1>
 </template>
 
 <script setup>

@@ -1,19 +1,27 @@
-import api from './base';
+import api from "./base";
 
 export const getAllTransactions = ({
-    searchByName,
+    searchByName = "",
     per_page = 15,
     page = 1,
-    sortBy = "id",
-    sortOrder = "asc",
-}) => {
-    return api.get("/transaction", {
+    sort_by = "id",
+    sort_order = "desc",
+}) =>
+    api.get("/transaction", {
         params: {
             searchByName,
             per_page,
             page,
-            sortBy,
-            sortOrder,
+            sort_by,
+            sort_order,
         },
     });
-};
+
+export const insertNewTransaction = ({ productID, qty }) =>
+    api.post("/transaction", {
+        product_id: productID,
+        qty,
+    });
+
+export const deleteTransaction = (transactionID) =>
+    api.delete(`/transaction/${transactionID}`);

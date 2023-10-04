@@ -23,7 +23,9 @@ class TransactionController extends Controller
         $sortBy = $request->input('sort_by', 'id');
         $sortOrder = $request->input('sort_order', 'asc');
 
-        $query = Transaction::join('products', 'products.id', '=', 'transactions.product_id');
+        $query = Transaction::select('transactions.*', 'products.*', 'categories.name as category_name')
+            ->join('products', 'products.id', '=', 'transactions.product_id')
+            ->join('categories', 'products.category_id', '=', 'categories.id');
 
 
         $searchTerm = $request->query('searchByName');
@@ -99,7 +101,7 @@ class TransactionController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         //
         try {
@@ -149,7 +151,7 @@ class TransactionController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, $id): JsonResponse
     {
         //
         try {
@@ -222,7 +224,7 @@ class TransactionController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy($id)
+    public function destroy($id): JsonResponse
     {
         try {
             $tr = Transaction::find($id);
