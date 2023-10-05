@@ -2,11 +2,13 @@ import { createRouter, createWebHistory } from "vue-router";
 
 const Home = () => import("../pages/Home.vue");
 const TrList = () => import("../pages/Transaction/List.vue");
+const SalesResult = () => import("../pages/Sales/Result.vue");
 const NotFound = () => import("../pages/Error/NotFound.vue");
 
 const routes = [
     { path: "/", name: "Home", component: Home },
     { path: "/transaction", name: "Transaction", component: TrList },
+    { path: "/sales-result", name: "SalesResult", component: SalesResult },
     { path: "/:catchAll(.*)", component: NotFound },
 ];
 

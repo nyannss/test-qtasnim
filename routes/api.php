@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\SalesReportController;
 use App\Http\Controllers\TransactionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -29,5 +30,9 @@ Route::controller(TransactionController::class)->prefix('transaction')->name('tr
 });
 
 Route::controller(ProductController::class)->prefix('product')->name('product.')->group(function () {
+    Route::get('/', 'index')->name('index');
+});
+
+Route::controller(SalesReportController::class)->prefix('sales-report')->name('salesReport.')->group(function () {
     Route::get('/', 'index')->name('index');
 });

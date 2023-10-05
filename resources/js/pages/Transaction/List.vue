@@ -8,6 +8,7 @@ import {
 
 import { useToast } from 'vue-toastification';
 
+import Loading from '../../components/Loading.vue';
 import AddNewModal from '../../components/Transaction/AddNewModal.vue';
 import DeleteModal from '../../components/Transaction/DeleteModal.vue';
 import EditModal from '../../components/Transaction/EditModal.vue';
@@ -124,7 +125,6 @@ const filterAction = () => {
 
     fetchData();
 }
-
 // reactivity
 watch(currentPage, fetchData);
 onMounted(() => fetchData());
@@ -139,15 +139,10 @@ onMounted(() => fetchData());
     <AddNewModal :onSuccess="() => fetchData()" />
     <EditModal :data="editModal.data" :onSave="() => { editModal.isOpen = false; fetchData(); }"
         :onClose="() => editModal.isOpen = false" v-if="editModal.isOpen" />
-
-    <v-container class="max-width" v-if="status.isDataLoading">
-        <v-row class="d-flex align-center justify-center" style="height: 100vh;">
-            <v-progress-circular indeterminate color="primary"></v-progress-circular>
-        </v-row>
-    </v-container>
+    <loading v-if="status.isDataLoading" />
 
 
-    <v-container class="max-width" v-if="!status.isDataLoading">
+    <v-container class="max-width" v-else>
 
         <v-row>
             <v-col cols="6" md="6">
@@ -162,7 +157,7 @@ onMounted(() => fetchData());
         </v-row>
 
 
-        <v-table>
+        <v-table v-if="data.length > 0">
             <thead>
                 <tr>
                     <th class="text-left">
@@ -201,6 +196,13 @@ onMounted(() => fetchData());
                 </tr>
             </tbody>
         </v-table>
+
+        <v-card w="50%" v-else>
+            <v-card-title>Hasil Pencarian Kosong</v-card-title>
+            <v-card-text>
+                Maaf, kami tidak menemukan hasil untuk pencarian Anda.
+            </v-card-text>
+        </v-card>
 
         <v-pagination :total-visible="5" v-model="queries.page" class="my-4" :length="meta.last_page"
             @input="fetchData"></v-pagination>
